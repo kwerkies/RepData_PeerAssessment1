@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #Analysis of Data from personal activity monitoring device
 
 Objective: Demonstrate learning from the Reproducible Research lectures.
@@ -119,3 +120,30 @@ for(j in seq_along(x)){
 #data3 <- aggregate(.~newdata$interval,FUN=mean,na.rm=TRUE,data=newdata)
 #plot(data3$interval,data3$weekday,type="l",xlab="Interval (every 5 min)",ylab="Weekend or Weekday")
 ```
+=======
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+## Loading and preprocessing the data
+
+
+
+## What is mean total number of steps taken per day?
+
+
+
+## What is the average daily activity pattern?
+
+
+
+## Imputing missing values
+
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+>>>>>>> 80edf39c3bb508fee88e3394542f967dd3fd3270
