@@ -1,0 +1,121 @@
+#Analysis of Data from personal activity monitoring device
+
+Objective: Demonstrate learning from the Reproducible Research lectures.
+
+##Loading and preprocessing the data
+
+1. We first load the data provided in the course webpage.
+```{r echo=TRUE}
+setwd("C:/Users/weijie/Desktop/Coursera R course/V. Reproducible Research")
+fileUrl <- "http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+temp <- tempfile()
+download.file(fileUrl,temp)
+data <- read.csv(unz(temp,"activity.csv"))
+data[,2] <- as.Date(data[,2])
+```
+
+2. Process/transform data into a suitable format. 
+```{r, echo=TRUE}
+#I am choosing to construct another dataset, data1, for daily values. This would be useful for subsequent analyses.
+n <- 24*60/5
+grp <- seq(1,nrow(data),by=n)
+dailysteps <- sapply(grp, function(x) sum(data[x:(x+n-1),1]))
+#data1 is a dataset of the total number of steps taken, on a daily basis
+data1 <- matrix(nrow=length(grp),ncol=2)
+colnames(data1)<-c("steps","date")
+for(i in 1:length(grp)){
+        data1[i,1] <- dailysteps[i]
+        data1[i,2] <- as.character(data[grp[i],2])
+}
+```
+
+##Computing the mean total number of steps taken per day
+
+1. Histogram of the total number of steps taken each day.
+```{r echo=TRUE}
+hist(dailysteps,breaks=20)
+```
+
+2. Mean and median total number of steps taken per day.
+```{r echo=TRUE}
+meandailysteps <- mean(dailysteps,na.rm=TRUE)
+mediandailysteps <- median(dailysteps,na.rm=TRUE)
+```
+
+##Average daily activity pattern
+
+1. Time-series plot of the 5-min interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
+```{r echo=TRUE}
+data2 <- aggregate(.~data$interval,FUN=mean,na.rm=TRUE,data=data)
+plot(data2$interval,data2$steps,type="l",xlab="Interval (every 5 min)",ylab="Average Number of Steps")
+```
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r echo=TRUE}
+data2[which.max(data2$steps),1]
+```
+
+##Imputing missing values
+
+1. Calculate total number of missing values in the dataset
+```{r echo=TRUE}
+number_of_NAs=0
+for(i in 1:nrow(data)){
+        if(is.na(data[i,1])==TRUE){        
+                number_of_NAs=number_of_NAs+1
+        }        
+}
+number_of_NAs
+```
+
+2. Devise a strategy for filling in all of the missing values in the dataset.
+CHOSEN STRATEGY: USE THE MEAN FOR THAT 5-MINUTE INTERVAL.
+
+3. Create a new dataset, with the missing data filled in, using the chosen strategy.
+```{r echo=TRUE}
+newdata <- as.data.frame(matrix(nrow=nrow(data),ncol=4))
+colnames(newdata)<-c("steps","date","interval","weekday")
+for(i in 1:nrow(data)){
+        if(is.na(data[i,1]==TRUE)){
+                int <- data[i,3]
+                newdata[i,1] <- data2[which(data2$interval==int),2]
+        } else {
+                newdata[i,1] <- as.numeric(data[i,1])
+        }
+        newdata[i,2] <- data[i,2]
+        newdata[i,3] <- data[i,3]
+}
+```
+
+4. Make a histogram of the revised total number of steps taken each day. Calculate the mean and median total number of steps taken per day.
+```{r echo=TRUE}
+newdailysteps <- sapply(grp, function(x) sum(as.numeric(newdata[x:(x+n-1),1])))
+hist(newdailysteps,breaks=20)
+newmeandailysteps <- mean(newdailysteps,na.rm=TRUE)
+newmediandailysteps <- median(newdailysteps,na.rm=TRUE)
+#Computing the differences from the previous estimates
+Diff_in_new_mean <- newmeandailysteps - meandailysteps
+Diff_in_new_median <- newmediandailysteps - mediandailysteps
+```
+There is no change in the mean, whilst the median has increased by `r Diff_in_new_median`.
+
+##Are there differences in activity patterns between weekdays and weekends?
+
+1. Create a new factor variable in the dataset with two levels: "weekday" and "weekend".
+```{r echo=TRUE}
+for(i in 1:nrow(newdata)){
+        newdata[i,4] <- "weekday"
+}
+x <- c(6,13,20,27,34,41,48,55)
+for(j in seq_along(x)){
+        for(k in grp[j]:grp[j]+2*288-1){
+                newdata[k,4] <- "weekend"
+        }
+}
+```
+
+2. Make a panel plot
+```{r echo=TRUE}
+#data3 <- aggregate(.~newdata$interval,FUN=mean,na.rm=TRUE,data=newdata)
+#plot(data3$interval,data3$weekday,type="l",xlab="Interval (every 5 min)",ylab="Weekend or Weekday")
+```
