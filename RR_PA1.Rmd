@@ -1,0 +1,129 @@
+---
+title: "PA1"
+author: "kwerkies"
+date: "Sunday, April 19, 2015"
+output: html_document
+---
+
+###Description of Assignment
+
+Using data from a personal activity monitoring device, we seek to understand an individual's activity patterns. Data collected (total of 17568 obs): measured data = steps taken; over 2 months (Oct to Nov 2012); collected at 5-min intervals throughout the day.
+
+####Task 1: Load and Preprocess the data
+```{r echo=TRUE}
+setwd("C:/Users/weijie/Desktop/Coursera R course/V. Reproducible Research")
+fileUrl <- "http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+temp <- tempfile()
+download.file(fileUrl,temp)
+data <- read.csv(unz(temp,"activity.csv"))
+data[,2] <- as.Date(data[,2])
+
+#I construct another dataset, daydata, to represent data (total no. of steps taken) for each day.
+n <- 24*60/5
+grp <- seq(1,nrow(data),by=n)
+daysteps <- sapply(grp, function(x) sum(data[x:(x+n-1),1]))
+daydata <- matrix(nrow=length(grp),ncol=2)
+colnames(daydata)<-c("total day's steps","date")
+for(i in 1:length(grp)){
+        daydata[i,1] <- daysteps[i]
+        daydata[i,2] <- as.character(data[grp[i],2])
+}
+```
+
+####Task 2: Calculating statistics on the total number of steps taken per day
+```{r, echo=TRUE}
+#a. Calculate the total no. of steps taken per day -- Already calculated as daydata dataset.
+
+#b. Make a histogram of the total no. of steps taken per day
+hist(as.numeric(daydata),xlab="",main="Histogram of the total number of steps taken per day")
+
+#c. Calculate the mean and median of the total no. of steps taken per day
+meandaysteps = round(mean(daysteps,na.rm=TRUE),digits=3)
+mediandaysteps=median(daysteps,na.rm=TRUE)
+```
+
+The mean and median of the total number of steps taken per day are `r meandaysteps` and `r mediandaysteps` respectively.
+
+####Task 3: Determining the average daily activity pattern
+```{r echo=TRUE}
+intervaldata <- matrix(nrow=n,ncol=2)
+colnames(intervaldata)<-c("interval","average steps at this interval")
+for(i in 1:288){
+        intervaldata[i,2]=sum(data[grp[]+i-1,1],na.rm=TRUE)
+        intervaldata[i,1]=data[i,3]
+}
+plot(intervaldata,type="l")
+hiint = intervaldata[which.max(intervaldata[,2]),1]
+```
+
+The 5-min interval at which the maximum number of steps is clocked is `r hiint`.
+
+####Task 4: Impute missing values
+```{r echo=TRUE}
+#a. Calculate the total number of days/intervals where there are missing values.
+sum(is.na(data[,1]))
+
+#b. Strategy for populating the missing values = Use the mean for that 5-minute interval. 
+
+#c. Create new dataset with missing data filled in
+data_new = data
+for(i in 1:nrow(data)){
+        if(is.na(data[i,1])){
+                data_new[i,1]=intervaldata[match(data[i,3],intervaldata[,1]),2]
+        }
+}
+
+#d. Make a histogram of the total number of steps taken each day. Calculate the mean and median total number of steps taken per day.
+daysteps_new <- sapply(grp, function(x) sum(data_new[x:(x+n-1),1]))
+daydata_new <- matrix(nrow=length(grp),ncol=2)
+colnames(daydata_new)<-c("total day's steps","date")
+for(i in 1:length(grp)){
+        daydata_new[i,1] <- daysteps_new[i]
+        daydata_new[i,2] <- as.character(data_new[grp[i],2])
+}
+hist(as.numeric(daydata_new),xlab="",main="Histogram of the total number of steps taken per day")
+meandaysteps_new = round(mean(daysteps_new,na.rm=TRUE),digits=3)
+mediandaysteps_new=median(daysteps_new,na.rm=TRUE)
+```
+
+The new mean value is `r meandaysteps_new`, compared with the old value of `r meandaysteps`. The new median value is `r mediandaysteps_new`, compared with the old value of `r mediandaysteps`. It is clear that these are drastically different. Imputing missing data based on the average steps for that 5-min interval had the effect of drastically boosting the mean and median values - more so for the mean value.
+
+```{r echo=TRUE}
+#a. Create dataset with new factor variable indicating whether it's a weekday or weekend
+data_new2=matrix(nrow=nrow(data_new),ncol=4)
+data_new2[,1]=data_new[,1]
+data_new2[,3]=data_new[,3]
+data_new2[,2]=as.character(data_new[,2])
+for(i in 1:nrow(data_new2)){
+        if(weekdays(as.Date(data_new2[i,2]))=="Saturday"|weekdays(as.Date(data_new2[i,2]))=="Sunday"){
+                data_new2[i,4]="Weekend"     
+        } else {
+                data_new2[i,4]="Weekday"
+        }
+}
+
+#b. Create panel plot. The first plot is of the average steps taken in each 5-min interval, for weekdays. The second plot is same, but done for weekends.
+intervaldata2 <- matrix(nrow=n,ncol=3)
+colnames(intervaldata2)<-c("interval","average steps at this interval, weekdays","average steps at this interval, weekends")
+j=1
+k=1
+grp_weekday=vector()
+grp_weekend=vector()
+for(i in 1:length(grp)){
+        if(data_new2[grp[i],4]=="Weekday"){
+                grp_weekday[j]=grp[i]
+                j=j+1
+        } else if(data_new2[grp[i],4]=="Weekend"){
+                grp_weekend[k]=grp[i]
+                k=k+1
+        }       
+}
+for(i in 1:288){
+        intervaldata2[i,1]=data[i,3]
+        intervaldata2[i,2]=sum(data[grp_weekday[]+i-1,1],na.rm=TRUE)
+        intervaldata2[i,3]=sum(data[grp_weekend[]+i-1,1],na.rm=TRUE)
+}
+par(mfrow=c(1,2),cex.main=0.9)
+plot(intervaldata2[,1],intervaldata2[,2],type="l",xlab="Interval",ylab="Average steps",main="Average steps at each Interval, Weekdays")
+plot(intervaldata2[,1],intervaldata2[,3],type="l",xlab="Interval",ylab="Average steps",main="Average steps at each Interval, Weekends")
+```
